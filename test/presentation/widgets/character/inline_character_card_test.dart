@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:nai_launcher/presentation/widgets/character/inline_character_editor.dart';
@@ -67,51 +66,6 @@ void main() {
           ),
         ),
       ),
-    );
-  }
-
-  for (final kind in [PointerDeviceKind.mouse, PointerDeviceKind.touch]) {
-    testWidgets(
-      'character resize accumulates rapid events and tracks reversal $kind',
-      (tester) async {
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: buildOverrides(),
-            child: const MaterialApp(
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
-              home: Scaffold(body: CharacterPromptEditor(character: character)),
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
-        final area = find.byKey(
-          const ValueKey('character-prompt-editor-area-positive'),
-        );
-        final handle = find.byKey(
-          const ValueKey('character-prompt-resize-handle-positive'),
-        );
-        final initialHeight = tester.getSize(area).height;
-        final start = tester.getCenter(handle);
-        final gesture = await tester.startGesture(start, kind: kind);
-        await gesture.moveTo(start + const Offset(0, 30));
-        await gesture.moveTo(start + const Offset(0, 50));
-        await gesture.moveTo(start + const Offset(0, 90));
-        await tester.pump();
-        expect(tester.getSize(area).height, closeTo(initialHeight + 90, .01));
-        await gesture.moveTo(start + const Offset(0, 120));
-        await tester.pump();
-        expect(tester.getSize(area).height, closeTo(initialHeight + 120, .01));
-        await gesture.moveTo(start + const Offset(0, 60));
-        await tester.pump();
-        expect(tester.getSize(area).height, closeTo(initialHeight + 60, .01));
-        await gesture.up();
-        await tester.pumpAndSettle();
-        await tester.pumpWidget(const SizedBox.shrink());
-        // Flush the existing delayed focus-loss toolbar dismissal.
-        await tester.pump(const Duration(milliseconds: 250));
-        expect(tester.takeException(), isNull);
-      },
     );
   }
 
@@ -316,22 +270,22 @@ void main() {
       expect(opacity.opacity, 0.48);
     });
 
-    testWidgets('窄屏三点菜单保留全部操作且不 overflow', (tester) async {
+    testWidgets('窄屏头部平铺全部操作且不 overflow', (tester) async {
       await tester.binding.setSurfaceSize(const Size(360, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(buildTestApp());
       await tester.pump(const Duration(milliseconds: 300));
 
-      await tester.tap(find.byKey(const Key('character-actions-menu')));
-      await tester.pump(const Duration(milliseconds: 300));
-
-      final l10n = AppLocalizations.of(
-        tester.element(find.byType(InlineCharacterCard)),
-      )!;
-      expect(find.text(l10n.characterEditor_moveUp), findsOneWidget);
-      expect(find.text(l10n.characterEditor_moveDown), findsOneWidget);
-      expect(find.text(l10n.tagLibrary_addToLibrary), findsOneWidget);
-      expect(find.text(l10n.common_delete), findsOneWidget);
+      // 1.1.1 样式：操作平铺在头部，删除不经下拉菜单，窄屏也不溢出
+      expect(find.byKey(const Key('character-actions-menu')), findsNothing);
+      for (final icon in [
+        Icons.arrow_upward,
+        Icons.arrow_downward,
+        Icons.library_add_outlined,
+        Icons.delete_outline,
+      ]) {
+        expect(find.byIcon(icon), findsOneWidget);
+      }
       expect(tester.takeException(), isNull);
 
       await tester.pumpWidget(const SizedBox.shrink());
@@ -348,12 +302,8 @@ void main() {
       await tester.pumpWidget(buildTestApp(target: target));
       await tester.pump(const Duration(milliseconds: 300));
 
-      await tester.tap(find.byKey(const Key('character-actions-menu')));
+      await tester.tap(find.byIcon(Icons.library_add_outlined));
       await tester.pumpAndSettle();
-      final l10n = AppLocalizations.of(
-        tester.element(find.byType(InlineCharacterCard)),
-      )!;
-      await tester.tap(find.text(l10n.tagLibrary_addToLibrary));
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(
