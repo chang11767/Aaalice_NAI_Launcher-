@@ -271,8 +271,9 @@ class _InlineCharacterCardState extends ConsumerState<InlineCharacterCard> {
     final gender = character.effectiveGender;
     final genderColor = _genderColor(gender);
     final scaledLabelHeight = MediaQuery.textScalerOf(context).scale(14) * 1.35;
+    // 与 1.1.1 一致：头部条 30/34；仍保留大字号下的兜底增高
     final headerHeight = math.max(
-      widget.compact ? 48.0 : 52.0,
+      widget.compact ? 30.0 : 34.0,
       scaledLabelHeight + 16,
     );
     // 缩略图铺满头部时文字压图，统一转白色
