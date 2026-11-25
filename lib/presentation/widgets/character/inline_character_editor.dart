@@ -292,8 +292,8 @@ class _CharacterPromptEditorState extends ConsumerState<CharacterPromptEditor> {
         showTagModeSwitch: false,
         onChanged: onChanged,
         onCleared: () => onChanged(''),
-        minLines: widget.compact ? 1 : 2,
-        maxLines: widget.compact ? 4 : 6,
+        minLines: widget.compact ? 1 : 3,
+        maxLines: widget.compact ? 4 : 12,
       ),
     );
   }
