@@ -11,7 +11,7 @@ class AutocompleteSettings {
     this.showAliases = true,
     this.showTranslations = true,
     this.autoInsertComma = true,
-    this.replaceUnderscores = false,
+    this.replaceUnderscores = true,
     this.openOnTagClick = false,
     this.danbooruEnabled = true,
     this.relatedTagsEnabled = true,
@@ -130,9 +130,9 @@ class AutocompleteSettingsNotifier extends Notifier<AutocompleteSettings> {
         replaceUnderscores:
             storage.getSetting<bool>(
               StorageKeys.autocompleteReplaceUnderscores,
-              defaultValue: false,
+              defaultValue: true,
             ) ??
-            false,
+            true,
         openOnTagClick:
             storage.getSetting<bool>(
               StorageKeys.autocompleteOpenOnTagClick,
