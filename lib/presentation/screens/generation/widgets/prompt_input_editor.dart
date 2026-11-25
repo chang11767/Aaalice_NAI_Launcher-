@@ -127,9 +127,10 @@ class PromptInputEditor extends ConsumerWidget {
               contentPadding: EdgeInsets.all(12),
             ),
             maxLines: null,
+            // 与 1.1.1 观感对齐：默认按 8 行起，内容更长时 fitContent 继续撑开
             minLines: compact || manualHeight
                 ? null
-                : (viewData.autoGrow ? 4 : null),
+                : (viewData.autoGrow ? 8 : null),
             expands: compact || manualHeight || !viewData.autoGrow,
             fitContent: !compact && !manualHeight && viewData.autoGrow,
             enableAssistant: false,
