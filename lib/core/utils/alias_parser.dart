@@ -143,24 +143,24 @@ class AliasParser {
     // 确保光标位置有效
     final effectiveCursor = cursorPosition.clamp(0, text.length);
 
-    // 向前查找最近的 <
+    // 向前查找最近的开括号（半角 < 或全角 《）
     int openBracketPos = -1;
     for (int i = effectiveCursor - 1; i >= 0; i--) {
       final char = text[i];
-      if (char == '<') {
+      if (char == '<' || char == '《') {
         openBracketPos = i;
         break;
-      } else if (char == '>' || char == '\n') {
-        // 遇到 > 或换行符，停止查找
+      } else if (char == '>' || char == '》' || char == '\n') {
+        // 遇到闭合符或换行符，停止查找
         break;
       }
     }
 
     if (openBracketPos == -1) return (false, '', -1);
 
-    // 检查 < 和光标之间是否有 >
+    // 检查开括号和光标之间是否已经闭合
     final textBetween = text.substring(openBracketPos, effectiveCursor);
-    if (textBetween.contains('>')) {
+    if (textBetween.contains('>') || textBetween.contains('》')) {
       return (false, '', -1);
     }
 
