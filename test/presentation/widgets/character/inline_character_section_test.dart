@@ -392,7 +392,7 @@ void main() {
     expect(find.byKey(const Key('character-hover-preview')), findsNothing);
   });
 
-  testWidgets('角色提示词可拖拽调整高度且正负输入分别保留尺寸', (tester) async {
+  testWidgets('角色提示词随内容自适应且正负输入各自排版', (tester) async {
     final container = createContainer();
 
     await tester.pumpWidget(
@@ -421,10 +421,12 @@ void main() {
     final positiveArea = find.byKey(
       const ValueKey('character-prompt-editor-area-positive'),
     );
-    final positiveHandle = find.byKey(
-      const ValueKey('character-prompt-resize-handle-positive'),
+    // 与 1.1.1 一致：编辑框按内容自适应（minLines 2 / maxLines 6），无拖拽手柄
+    expect(
+      find.byKey(const ValueKey('character-prompt-resize-handle-positive')),
+      findsNothing,
     );
-    expect(tester.getSize(positiveArea).height, 112);
+    expect(tester.getSize(positiveArea).height, greaterThan(0));
     expect(
       find.descendant(
         of: positiveArea,
@@ -437,35 +439,21 @@ void main() {
       lessThanOrEqualTo(tester.getRect(positiveArea).top),
     );
 
-    await tester.drag(positiveHandle, const Offset(0, 96));
-    await tester.pump();
-    final resizedPositiveHeight = tester.getSize(positiveArea).height;
-    expect(resizedPositiveHeight, greaterThan(112));
-
     await tester.tap(find.text('负向提示词'));
     await tester.pump();
     final negativeArea = find.byKey(
       const ValueKey('character-prompt-editor-area-negative'),
     );
-    expect(tester.getSize(negativeArea).height, 112);
-
-    await tester.drag(
+    expect(tester.getSize(negativeArea).height, greaterThan(0));
+    expect(
       find.byKey(const ValueKey('character-prompt-resize-handle-negative')),
-      const Offset(0, 1000),
+      findsNothing,
     );
-    await tester.pump();
-    expect(tester.getSize(negativeArea).height, 300);
-
-    await tester.drag(
-      find.byKey(const ValueKey('character-prompt-resize-handle-negative')),
-      const Offset(0, -1000),
-    );
-    await tester.pump();
-    expect(tester.getSize(negativeArea).height, 112);
 
     await tester.tap(find.text('正向提示词'));
     await tester.pump();
-    expect(tester.getSize(positiveArea).height, resizedPositiveHeight);
+    final resizedPositiveHeight = tester.getSize(positiveArea).height;
+    expect(resizedPositiveHeight, greaterThan(0));
     expect(tester.takeException(), isNull);
   });
 
@@ -726,18 +714,18 @@ void main() {
       closeTo(tester.getRect(slot).right, 0.1),
     );
 
-    await tester.drag(
+    // 1.1.1 样式下编辑框不再有拖拽手柄
+    expect(
       find.byKey(const ValueKey('character-prompt-resize-handle-positive')),
-      const Offset(0, 1000),
+      findsNothing,
     );
-    await tester.pump();
     expect(
       tester
           .getSize(
             find.byKey(const ValueKey('character-prompt-editor-area-positive')),
           )
           .height,
-      300,
+      greaterThan(0),
     );
     expect(tester.takeException(), isNull);
   });
