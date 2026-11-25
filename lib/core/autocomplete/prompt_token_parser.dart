@@ -9,8 +9,8 @@ enum PromptTokenMode {
   spaceSeparated,
   gallerySearch;
 
-  static final _commas = RegExp(r'[,\n]');
-  static final _spacesAndCommas = RegExp(r'[,\n\s]+');
+  static final _commas = RegExp(r'[,\uFF0C\n]');
+  static final _spacesAndCommas = RegExp(r'[,\uFF0C\n\s]+');
   static final _galleryCommas = RegExp(r'[,，\r\n]');
 
   bool splitsOnSpaces(String text) =>
@@ -24,8 +24,8 @@ enum PromptTokenMode {
   RegExp _separator(bool splitOnSpaces) =>
       splitOnSpaces ? _spacesAndCommas : _commaSeparator;
 
-  bool _isComma(int unit) =>
-      unit == 0x2c || (this == gallerySearch && unit == 0xff0c);
+  // 中文输入法下打出的全角逗号与半角逗号等价，避免必须先切回英文才能触发联想
+  bool _isComma(int unit) => unit == 0x2c || unit == 0xff0c;
 
   bool _endsInComma(String text) =>
       text.isNotEmpty && _isComma(text.codeUnitAt(text.length - 1));
@@ -55,7 +55,7 @@ class PromptTokenParser {
   static final RegExp _syntaxSuffix = RegExp(
     r'^(?::\s*-?\d+(?:\.\d+)?)?[\}\]\)]*',
   );
-  static final RegExp _leadingComma = RegExp(r'^\s*,\s*');
+  static final RegExp _leadingComma = RegExp(r'^\s*[,，]\s*');
 
   static CompletionQuery parse({
     required String text,
@@ -86,7 +86,12 @@ class PromptTokenParser {
         AliasParser.detectPartialAlias(text, cursor);
     if (isTypingAlias) {
       var replacementEnd = cursor;
-      final closingBracket = text.indexOf('>', cursor);
+      // 闭合符可能是半角 > 或全角 》，取更靠前的那个
+      final asciiClose = text.indexOf('>', cursor);
+      final wideClose = text.indexOf('》', cursor);
+      final closingBracket = asciiClose < 0
+          ? wideClose
+          : (wideClose >= 0 && wideClose < asciiClose ? wideClose : asciiClose);
       final nextLineBreak = text.indexOf(_lineBreak, cursor);
       if (closingBracket >= 0 &&
           (nextLineBreak < 0 || closingBracket < nextLineBreak)) {
