@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart' show kMinInteractiveDimensionCupertino;
 import 'package:flutter/material.dart';
 import 'package:nai_launcher/l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +7,6 @@ import '../../../core/autocomplete/autocomplete_settings.dart'
 import '../../../data/models/character/character_prompt.dart';
 import '../../../data/models/image/image_params.dart' show ImageParamsExtension;
 import '../../adaptive/adaptive_presenter.dart';
-import '../../adaptive/interaction_policy.dart';
 import '../../prompt_assistant/providers/prompt_assistant_history_provider.dart';
 import '../../prompt_assistant/widgets/prompt_assistant_overlay.dart';
 import '../../prompt_assistant/widgets/prompt_assistant_quick_settings.dart';
@@ -188,7 +186,7 @@ class _CharacterPromptEditorState extends ConsumerState<CharacterPromptEditor> {
         : _negativeController;
     return PromptEditorControlRow(
       sessionId: sessionId,
-      minimumLeadingWidth: 2 * kMinInteractiveDimensionCupertino + tabGap,
+      // 与 1.1.1 一致：抬头保持单行，不用最小宽度触发上下堆叠
       assistant: PromptAssistantOverlay(
         placement: PromptAssistantPlacement.inline,
         iconOnly: true,
@@ -323,11 +321,8 @@ class _EditorTab extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
       child: Container(
-        constraints: BoxConstraints(
-          minHeight: context.interactionPolicy.minimumControlExtent,
-        ),
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        // 与 1.1.1 一致：小标签不占满触屏高度，避免抬头吃掉编辑区
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: selected
               ? selectedColor.withValues(alpha: 0.12)
@@ -337,7 +332,7 @@ class _EditorTab extends StatelessWidget {
         child: Text(
           label,
           textAlign: TextAlign.center,
-          style: theme.textTheme.labelMedium?.copyWith(
+          style: theme.textTheme.labelSmall?.copyWith(
             color: selected ? selectedColor : colorScheme.onSurfaceVariant,
             fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
           ),
