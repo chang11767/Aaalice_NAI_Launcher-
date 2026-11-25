@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/cupertino.dart' show kMinInteractiveDimensionCupertino;
 import 'package:flutter/material.dart';
 import 'package:nai_launcher/l10n/app_localizations.dart';
@@ -16,10 +14,8 @@ import '../../prompt_assistant/widgets/prompt_assistant_overlay.dart';
 import '../../prompt_assistant/widgets/prompt_assistant_quick_settings.dart';
 import '../prompt/prompt_editor_control_row.dart';
 import '../../providers/character_prompt_provider.dart';
-import '../../providers/generation/character_editor_layout_provider.dart';
 import '../../providers/image_generation_provider.dart';
 import '../common/themed_confirm_dialog.dart';
-import '../common/vertical_resize_handle.dart';
 import '../prompt/toolbar/toolbar.dart';
 import '../prompt/unified/unified.dart';
 
@@ -276,63 +272,29 @@ class _CharacterPromptEditorState extends ConsumerState<CharacterPromptEditor> {
       clearNeedsConfirm: false,
     );
 
-    final viewportHeight = MediaQuery.sizeOf(context).height;
-    final minimumHeight = widget.compact ? 88.0 : 112.0;
-    final maximumHeight = math.max(
-      minimumHeight,
-      math.min(viewportHeight * 0.5, widget.compact ? 360.0 : 480.0),
-    );
-    final heightKey = (characterId: widget.character.id, negative: isNegative);
-    final storedHeight = ref.watch(characterEditorHeightProvider(heightKey));
-    final editorHeight = (storedHeight ?? minimumHeight)
-        .clamp(minimumHeight, maximumHeight)
-        .toDouble();
-    final resizeHandleHeight =
-        context.interactionPolicy.prefersTouchPresentation
-        ? context.interactionPolicy.minimumControlExtent
-        : 20.0;
+    // 与 1.1.1 一致：按内容自适应（2~6 行），不再固定高度、不再有拖拽手柄
     final fieldName = isNegative ? 'negative' : 'positive';
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          key: ValueKey('character-prompt-editor-area-$fieldName'),
-          height: editorHeight,
-          child: PromptEditorWithToolbar(
-            toolbarConfig: PromptEditorToolbarConfig.compactMode.copyWith(
-              showClearButton: false,
-            ),
-            inputConfig: inputConfig,
-            controller: controller,
-            focusNode: focusNode,
-            sessionId: isNegative
-                ? PromptHistorySessionIds.characterNegative(widget.character.id)
-                : PromptHistorySessionIds.characterPrompt(widget.character.id),
-            enableAssistant: !negativeLocked,
-            showAssistantEntry: false,
-            showTagModeSwitch: false,
-            onChanged: onChanged,
-            onCleared: () => onChanged(''),
-            expands: true,
-          ),
+    return KeyedSubtree(
+      key: ValueKey('character-prompt-editor-area-$fieldName'),
+      child: PromptEditorWithToolbar(
+        toolbarConfig: PromptEditorToolbarConfig.compactMode.copyWith(
+          showClearButton: false,
         ),
-        VerticalResizeHandle(
-          key: ValueKey('character-prompt-resize-handle-$fieldName'),
-          height: resizeHandleHeight,
-          onDrag: (delta) {
-            // Several pointer events can arrive before the next build.
-            ref
-                .read(characterEditorHeightProvider(heightKey).notifier)
-                .resizeBy(
-                  delta: delta,
-                  fallbackHeight: editorHeight,
-                  minHeight: minimumHeight,
-                  maxHeight: maximumHeight,
-                );
-          },
-        ),
-      ],
+        inputConfig: inputConfig,
+        controller: controller,
+        focusNode: focusNode,
+        sessionId: isNegative
+            ? PromptHistorySessionIds.characterNegative(widget.character.id)
+            : PromptHistorySessionIds.characterPrompt(widget.character.id),
+        enableAssistant: !negativeLocked,
+        showAssistantEntry: false,
+        showTagModeSwitch: false,
+        onChanged: onChanged,
+        onCleared: () => onChanged(''),
+        minLines: widget.compact ? 1 : 2,
+        maxLines: widget.compact ? 4 : 6,
+      ),
     );
   }
 }
