@@ -12,7 +12,6 @@ import '../../../data/models/character/character_prompt.dart';
 import '../../providers/character_position_canvas_provider.dart';
 import '../../providers/character_prompt_provider.dart';
 import '../common/decoded_memory_image.dart';
-import '../common/menu_action_label.dart';
 import '../common/translated_tag_text.dart';
 import 'add_to_library_dialog.dart';
 import 'inline_character_editor.dart';
@@ -358,11 +357,13 @@ class _InlineCharacterCardState extends ConsumerState<InlineCharacterCard> {
                       onTap: () =>
                           _notifier.toggleCharacterEnabled(character.id),
                     ),
-                    _CharacterActionsMenu(
-                      onHeader: onHeader,
-                      canMoveUp: widget.index > 0,
-                      canMoveDown: widget.index < widget.total - 1,
-                      onSelected: (action) => _handleAction(context, action),
+                    // 与 1.1.1 一致：操作平铺一排，删除直接点，不用先展开下拉菜单
+                    ..._buildFullActions(context, l10n, onHeader),
+                    _HeaderIconButton(
+                      icon: Icons.delete_outline,
+                      color: hasThumbnail ? Colors.white : colorScheme.error,
+                      tooltip: l10n.common_delete,
+                      onTap: _deleteCharacter,
                     ),
                   ],
                 ),
@@ -374,14 +375,34 @@ class _InlineCharacterCardState extends ConsumerState<InlineCharacterCard> {
     );
   }
 
-  void _handleAction(BuildContext context, _CharacterCardAction action) {
-    switch (action) {
-      case _CharacterCardAction.moveUp:
-        _notifier.moveCharacterUp(widget.index);
-      case _CharacterCardAction.moveDown:
-        _notifier.moveCharacterDown(widget.index);
-      case _CharacterCardAction.addToLibrary:
-        _openModal(
+  /// 头部平铺操作（与 1.1.1 一致：上移 / 下移 / 收藏到词库）
+  ///
+  /// 名字用 Expanded 省略号吸收宽度，窄卡不会溢出。
+  List<Widget> _buildFullActions(
+    BuildContext context,
+    AppLocalizations l10n,
+    Color onHeader,
+  ) {
+    return [
+      _HeaderIconButton(
+        icon: Icons.arrow_upward,
+        color: onHeader,
+        tooltip: l10n.characterEditor_moveUp,
+        enabled: widget.index > 0,
+        onTap: () => _notifier.moveCharacterUp(widget.index),
+      ),
+      _HeaderIconButton(
+        icon: Icons.arrow_downward,
+        color: onHeader,
+        tooltip: l10n.characterEditor_moveDown,
+        enabled: widget.index < widget.total - 1,
+        onTap: () => _notifier.moveCharacterDown(widget.index),
+      ),
+      _HeaderIconButton(
+        icon: Icons.library_add_outlined,
+        color: onHeader,
+        tooltip: l10n.tagLibrary_addToLibrary,
+        onTap: () => _openModal(
           () => AddToLibraryDialog.show(
             context,
             name: widget.character.name,
@@ -390,10 +411,9 @@ class _InlineCharacterCardState extends ConsumerState<InlineCharacterCard> {
               negativePrompt: widget.character.negativePrompt,
             ),
           ),
-        );
-      case _CharacterCardAction.delete:
-        _deleteCharacter();
-    }
+        ),
+      ),
+    ];
   }
 
   static Color _genderColor(CharacterGender gender) {
@@ -445,8 +465,6 @@ class _InlineCharacterCardState extends ConsumerState<InlineCharacterCard> {
     );
   }
 }
-
-enum _CharacterCardAction { moveUp, moveDown, addToLibrary, delete }
 
 class _GenderBadge extends StatelessWidget {
   const _GenderBadge({
@@ -508,90 +526,6 @@ class _GenderBadge extends StatelessWidget {
   }
 }
 
-class _CharacterActionsMenu extends StatelessWidget {
-  const _CharacterActionsMenu({
-    required this.onHeader,
-    required this.canMoveUp,
-    required this.canMoveDown,
-    required this.onSelected,
-  });
-
-  final Color onHeader;
-  final bool canMoveUp;
-  final bool canMoveDown;
-  final ValueChanged<_CharacterCardAction> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
-
-    return PopupMenuButton<_CharacterCardAction>(
-      key: const Key('character-actions-menu'),
-      tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
-      onSelected: onSelected,
-      padding: EdgeInsets.zero,
-      icon: Icon(Icons.more_horiz, size: 19, color: onHeader),
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          value: _CharacterCardAction.moveUp,
-          enabled: canMoveUp,
-          child: _CharacterMenuLabel(
-            icon: Icons.arrow_upward,
-            label: l10n.characterEditor_moveUp,
-          ),
-        ),
-        PopupMenuItem(
-          value: _CharacterCardAction.moveDown,
-          enabled: canMoveDown,
-          child: _CharacterMenuLabel(
-            icon: Icons.arrow_downward,
-            label: l10n.characterEditor_moveDown,
-          ),
-        ),
-        PopupMenuItem(
-          value: _CharacterCardAction.addToLibrary,
-          child: _CharacterMenuLabel(
-            icon: Icons.library_add_outlined,
-            label: l10n.tagLibrary_addToLibrary,
-          ),
-        ),
-        const PopupMenuDivider(),
-        PopupMenuItem(
-          value: _CharacterCardAction.delete,
-          child: _CharacterMenuLabel(
-            icon: Icons.delete_outline,
-            label: l10n.common_delete,
-            color: theme.colorScheme.error,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CharacterMenuLabel extends StatelessWidget {
-  const _CharacterMenuLabel({
-    required this.icon,
-    required this.label,
-    this.color,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    return MenuActionLabel(
-      leading: Icon(icon),
-      label: label,
-      color: color ?? Theme.of(context).colorScheme.onSurface,
-      gap: 10,
-    );
-  }
-}
-
 /// 头部条缩略图背景（横向铺满 + 暗遮罩保证文字可读）
 class _HeaderThumbnail extends StatelessWidget {
   final String path;
@@ -630,18 +564,20 @@ class _HeaderThumbnail extends StatelessWidget {
   }
 }
 
-/// 头部条小图标按钮
+/// 头部条小图标按钮（与 1.1.1 一致的紧凑尺寸）
 class _HeaderIconButton extends StatelessWidget {
   final IconData icon;
   final Color color;
   final String tooltip;
   final VoidCallback onTap;
+  final bool enabled;
 
   const _HeaderIconButton({
     required this.icon,
     required this.color,
     required this.tooltip,
     required this.onTap,
+    this.enabled = true,
   });
 
   @override
@@ -650,11 +586,15 @@ class _HeaderIconButton extends StatelessWidget {
       message: tooltip,
       waitDuration: const Duration(milliseconds: 500),
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: SizedBox.square(
-          dimension: 44,
-          child: Icon(icon, size: 18, color: color),
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(4),
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Icon(
+            icon,
+            size: 15,
+            color: enabled ? color : color.withValues(alpha: 0.3),
+          ),
         ),
       ),
     );
