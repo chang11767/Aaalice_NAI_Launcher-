@@ -8,12 +8,8 @@ import '../../../data/models/character/character_prompt.dart';
 import '../../../data/models/image/image_params.dart' show ImageParamsExtension;
 import '../../adaptive/adaptive_presenter.dart';
 import '../../prompt_assistant/providers/prompt_assistant_history_provider.dart';
-import '../../prompt_assistant/widgets/prompt_assistant_overlay.dart';
-import '../../prompt_assistant/widgets/prompt_assistant_quick_settings.dart';
-import '../prompt/prompt_editor_control_row.dart';
 import '../../providers/character_prompt_provider.dart';
 import '../../providers/image_generation_provider.dart';
-import '../common/themed_confirm_dialog.dart';
 import '../prompt/toolbar/toolbar.dart';
 import '../prompt/unified/unified.dart';
 
@@ -122,43 +118,14 @@ class _CharacterPromptEditorState extends ConsumerState<CharacterPromptEditor> {
         ),
       );
 
-  Future<void> _clearCurrentPrompt() async {
-    final controller = _tabIndex == 0 ? _promptController : _negativeController;
-    if (controller.text.isEmpty) return;
-
-    final l10n = AppLocalizations.of(context)!;
-    final confirmed = await ThemedConfirmDialog.show(
-      context: context,
-      title: l10n.common_confirmClear,
-      content: l10n.common_clearInputConfirm,
-      confirmText: l10n.common_clear,
-      cancelText: l10n.common_cancel,
-      type: ThemedConfirmDialogType.warning,
-      icon: Icons.clear_all,
-    );
-    if (!mounted || !confirmed) return;
-
-    controller.clear();
-    _updateCharacter(
-      _tabIndex == 0
-          ? widget.character.copyWith(prompt: '')
-          : widget.character.copyWith(negativePrompt: ''),
-    );
-    setState(() {});
-    _focusCurrentTab();
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final assistantSessionId = _tabIndex == 0
-        ? PromptHistorySessionIds.characterPrompt(widget.character.id)
-        : PromptHistorySessionIds.characterNegative(widget.character.id);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildEditorHeader(l10n, assistantSessionId),
+        _buildEditorHeader(l10n),
         const SizedBox(height: 6),
         if (_tabIndex == 0)
           _buildPromptEditor(
@@ -178,63 +145,36 @@ class _CharacterPromptEditorState extends ConsumerState<CharacterPromptEditor> {
     );
   }
 
-  Widget _buildEditorHeader(AppLocalizations l10n, String sessionId) {
+  Widget _buildEditorHeader(AppLocalizations l10n) {
     const tabGap = 6.0;
-    final positive = _tabIndex == 0;
-    final currentController = positive
-        ? _promptController
-        : _negativeController;
-    return PromptEditorControlRow(
-      sessionId: sessionId,
-      // 与 1.1.1 一致：抬头保持单行，不用最小宽度触发上下堆叠
-      assistant: PromptAssistantOverlay(
-        placement: PromptAssistantPlacement.inline,
-        iconOnly: true,
-        supportsTagMode: true,
-        enabled: !_watchNegativeLocked(),
-        sessionId: sessionId,
-        controller: currentController,
-        onChanged: positive ? _updatePrompt : _updateNegativePrompt,
-        tapRegionGroupId: CharacterPromptEditor.tapRegionGroupId(
-          widget.character.id,
+    // 与 1.1.1 一致：抬头只有正/负两个小标签，
+    // 不再附带助手入口、标签模式开关和行内清空按钮。
+    return Row(
+      key: _tabsKey,
+      children: [
+        Flexible(
+          child: _EditorTab(
+            label: l10n.prompt_positivePrompt,
+            selected: _tabIndex == 0,
+            onTap: () {
+              setState(() => _tabIndex = 0);
+              _focusCurrentTab();
+            },
+          ),
         ),
-        onOpenSettings: () => PromptAssistantQuickSettings.show(context),
-      ),
-      leading: Row(
-        key: _tabsKey,
-        children: [
-          Flexible(
-            child: _EditorTab(
-              label: l10n.prompt_positivePrompt,
-              selected: _tabIndex == 0,
-              onTap: () {
-                setState(() => _tabIndex = 0);
-                _focusCurrentTab();
-              },
-            ),
+        const SizedBox(width: tabGap),
+        Flexible(
+          child: _EditorTab(
+            label: l10n.prompt_negativePrompt,
+            isNegative: true,
+            selected: _tabIndex == 1,
+            onTap: () {
+              setState(() => _tabIndex = 1);
+              _focusCurrentTab();
+            },
           ),
-          const SizedBox(width: tabGap),
-          Flexible(
-            child: _EditorTab(
-              label: l10n.prompt_negativePrompt,
-              isNegative: true,
-              selected: _tabIndex == 1,
-              onTap: () {
-                setState(() => _tabIndex = 1);
-                _focusCurrentTab();
-              },
-            ),
-          ),
-        ],
-      ),
-      action: currentController.text.isEmpty
-          ? null
-          : IconButton(
-              key: const ValueKey('character-prompt-clear-button'),
-              tooltip: l10n.toolbar_clear,
-              onPressed: _clearCurrentPrompt,
-              icon: const Icon(Icons.clear, size: 20),
-            ),
+        ),
+      ],
     );
   }
 
