@@ -231,6 +231,24 @@ Win32Window::MessageHandler(HWND hwnd,
 
       return 0;
     }
+    case WM_SHOWWINDOW:
+      // 收进托盘时窗口只是被隐藏，系统仍会把它当作前台窗口，键盘焦点也留在
+      // 内部的 FLUTTERVIEW 上。结果是所有键盘输入都投递给一个看不见的窗口，
+      // 其他程序再也收不到焦点（表现为整机打不了字）。隐藏生效前先把焦点和
+      // 前台交还桌面，此时窗口还在前台，才有权限完成这次转移。
+      if (wparam == FALSE) {
+        if (GetFocus() != nullptr) {
+          SetFocus(nullptr);
+        }
+        if (GetForegroundWindow() == hwnd) {
+          HWND shell = GetShellWindow();
+          if (shell != nullptr) {
+            SetForegroundWindow(shell);
+          }
+        }
+      }
+      break;
+
     case WM_SIZE: {
       QueueChildContentResize();
       return 0;
