@@ -97,6 +97,24 @@ Future<void> _restoreWindowIfMinimized() async {
   if (await windowManager.isMinimized()) await windowManager.restore();
 }
 
+/// 窗口重新可见后，让原生层把 Flutter child view 重新对齐一次。
+///
+/// 从托盘或最小化恢复时主窗口回来了，但内部 FLUTTERVIEW 可能仍停在隐藏前
+/// 的位置，表现为界面能看见却点不动、hover 不消失。这里显式请求一次同步。
+Future<void> _synchronizeViewMetricsAfterRestore() async {
+  if (!Platform.isWindows) return;
+  try {
+    await const WindowsNativeWindowStatePlatform().synchronizeViewMetrics();
+  } catch (error, stackTrace) {
+    AppLogger.e(
+      'Failed to synchronize view metrics after window restore',
+      error,
+      stackTrace,
+      'Window',
+    );
+  }
+}
+
 /// 系统托盘监听器，处理托盘图标交互
 class AppTrayListener extends TrayListener {
   @override
@@ -108,6 +126,7 @@ class AppTrayListener extends TrayListener {
       if (DesktopAppShutdownService.isShuttingDown) return;
       await windowManager.show();
       await windowManager.focus();
+      await _synchronizeViewMetricsAfterRestore();
       AppLogger.d('Window restored from tray (left click)', 'TrayListener');
     } catch (e) {
       AppLogger.e('Failed to restore window from tray: $e', 'TrayListener');
@@ -131,6 +150,7 @@ class AppTrayListener extends TrayListener {
         if (DesktopAppShutdownService.isShuttingDown) return;
         await windowManager.show();
         await windowManager.focus();
+        await _synchronizeViewMetricsAfterRestore();
         AppLogger.d('Window shown via tray menu', 'TrayListener');
       } else if (menuItem.key == 'exit') {
         await DesktopAppShutdownService.shutdownAndExit(0);
@@ -266,6 +286,7 @@ void setupWindowsWakeUpChannel() {
         await _restoreWindowIfMinimized();
         await windowManager.show();
         await windowManager.focus();
+        await _synchronizeViewMetricsAfterRestore();
         AppLogger.i('Window woken up by new instance', 'Main');
       } catch (e) {
         AppLogger.e('Failed to wake up window: $e', 'Main');
