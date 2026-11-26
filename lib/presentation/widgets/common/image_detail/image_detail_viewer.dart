@@ -14,7 +14,6 @@ import '../../../../core/shortcuts/shortcuts.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../core/utils/image_share_sanitizer.dart';
 import '../../../../core/utils/window_focus_tracker.dart';
-import '../../../../core/windowing/workspace_side_panel_contract.dart';
 import '../../../adaptive/adaptive_presenter.dart';
 import '../../../providers/share_image_settings_provider.dart';
 import '../../../providers/copy_drag_watermark_provider.dart';
@@ -24,8 +23,6 @@ import '../../../utils/clipboard_image.dart';
 import '../../shortcuts/shortcuts.dart';
 import '../app_toast.dart';
 import '../app_state_view.dart';
-import '../horizontal_resize_handle.dart';
-import '../resizable_pane.dart';
 import 'components/detail_image_page.dart';
 import 'components/detail_metadata_panel.dart';
 import 'components/prompt_copy_dialog.dart';
@@ -209,9 +206,6 @@ class _ImageDetailViewerState extends ConsumerState<ImageDetailViewer> {
   static const Duration _windowsEscFocusCooldown = Duration(milliseconds: 1200);
   static const Duration _windowsEscBounceCooldown = Duration(seconds: 4);
   static const Duration _closeRequestThrottle = Duration(milliseconds: 700);
-  static const double _initialMetadataPanelWidth = 420;
-  static const double _minimumMetadataPanelWidth = 320;
-  static const double _minimumImagePaneWidth = 480;
 
   late PageController _pageController;
   List<ImageDetailData>? _updatedImages;
@@ -228,7 +222,6 @@ class _ImageDetailViewerState extends ConsumerState<ImageDetailViewer> {
   bool _isClosing = false;
   DateTime? _lastCloseRequestedAt;
   int _navigationRequest = 0;
-  late final ResizablePaneController _metadataPanelWidthController;
 
   @override
   void initState() {
@@ -236,9 +229,6 @@ class _ImageDetailViewerState extends ConsumerState<ImageDetailViewer> {
     _currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: _currentIndex);
     _thumbnailController = ScrollController();
-    _metadataPanelWidthController = ResizablePaneController(
-      initialWidth: _initialMetadataPanelWidth,
-    );
 
     _refreshWhenPrefetched(_currentIndex);
     _prefetchNeighbors(_currentIndex);
@@ -653,49 +643,11 @@ class _ImageDetailViewerState extends ConsumerState<ImageDetailViewer> {
             body: LayoutBuilder(
               builder: (context, constraints) {
                 if (pageError != null) return _buildPageError(pageError);
-                final showSideMetadata = constraints.maxWidth >= 1100;
-                if (!showSideMetadata || !widget.showMetadataPanel) {
-                  return _buildMainContent(
-                    showMetadataAction: widget.showMetadataPanel,
-                    availableHeight: constraints.maxHeight,
-                  );
-                }
-
-                final maximumPanelWidth =
-                    WorkspaceSidePanelContract.constrainedWorkspaceWidth(
-                      workspaceWidth: constraints.maxWidth,
-                      preferredWidth: WorkspaceSidePanelContract.maximumWidth,
-                      occupiedWidth: ResizeHandle.extentOf(context),
-                      minimumPrimaryWidth: _minimumImagePaneWidth,
-                      minimumWidth: _minimumMetadataPanelWidth,
-                    );
-                return Row(
-                  children: [
-                    Expanded(
-                      child: _buildMainContent(
-                        showMetadataAction: false,
-                        availableHeight: constraints.maxHeight,
-                      ),
-                    ),
-                    ResizeHandle(
-                      key: const ValueKey(
-                        'image-detail-metadata-resize-handle',
-                      ),
-                      onDrag: (delta) =>
-                          _metadataPanelWidthController.resizeBy(-delta),
-                    ),
-                    ResizablePane(
-                      controller: _metadataPanelWidthController,
-                      minimumWidth: _minimumMetadataPanelWidth,
-                      maximumWidth: maximumPanelWidth,
-                      child: DetailMetadataPanel(
-                        currentImage: _currentImage,
-                        initialExpanded: true,
-                        collapsible: false,
-                        fillAvailableWidth: true,
-                      ),
-                    ),
-                  ],
+                // 始终整屏看图：参数不再以固定侧栏挤占画面，
+                // 改为右上角按钮按需弹出（_showMetadataPanel）。
+                return _buildMainContent(
+                  showMetadataAction: widget.showMetadataPanel,
+                  availableHeight: constraints.maxHeight,
                 );
               },
             ),
@@ -972,7 +924,6 @@ class _ImageDetailViewerState extends ConsumerState<ImageDetailViewer> {
 
   @override
   void dispose() {
-    _metadataPanelWidthController.dispose();
     for (final controller in _transformationControllers.values) {
       controller.dispose();
     }
